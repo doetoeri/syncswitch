@@ -31,6 +31,16 @@ jobs:
           test -n "$ROOT"
           echo "PROJECT_ROOT=$ROOT" >> "$GITHUB_ENV"
           sed -i '/^TapeReader_RESOURCE_DIRS[[:space:]]*=/d' "$ROOT/Makefile"
+          python3 - "$ROOT/Classes/TRDocumentStore.m" <<'PY'
+          import pathlib, sys
+          p = pathlib.Path(sys.argv[1])
+          text = p.read_text()
+          old = '@implementation TRDocumentStore\n+ (instancetype)sharedStore { static TRDocumentStore *s; if (!s) s = [[self alloc] init]; return s; }'
+          new = 'static TRDocumentStore *TRSharedStore = nil;\n@implementation TRDocumentStore\n+ (instancetype)sharedStore { if (!TRSharedStore) TRSharedStore = [[self alloc] init]; return TRSharedStore; }'
+          if old not in text:
+              raise SystemExit('singleton source pattern not found')
+          p.write_text(text.replace(old, new))
+          PY
           echo '--- Makefile ---'
           cat "$ROOT/Makefile"
 
