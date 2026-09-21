@@ -70,7 +70,7 @@ jobs:
       - name: Static validation
         run: |
           cd "$PROJECT_ROOT"
-          python3 scripts/validate.py
+          PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin python3 scripts/validate.py
 
       - name: Build TapeReader
         run: |
