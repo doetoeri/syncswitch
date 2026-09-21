@@ -67,6 +67,29 @@ jobs:
               p.write_text(s)
           PY
 
+      - name: Apply TapeReader 1.0 major update
+        shell: bash
+        run: |
+          set -euxo pipefail
+          cp "$GITHUB_WORKSPACE/ci/tapereader-v1.0/TRReaderViewController.m" "$PROJECT_ROOT/Classes/TRReaderViewController.m"
+          cp "$GITHUB_WORKSPACE/ci/tapereader-v1.0/TRPDFView.h" "$PROJECT_ROOT/Classes/TRPDFView.h"
+          cp "$GITHUB_WORKSPACE/ci/tapereader-v1.0/TRPDFView.m" "$PROJECT_ROOT/Classes/TRPDFView.m"
+          cp "$GITHUB_WORKSPACE/ci/tapereader-v1.0/TRTapeView.m" "$PROJECT_ROOT/Classes/TRTapeView.m"
+          cp "$GITHUB_WORKSPACE/ci/tapereader-v1.0/TRReviewViewController.m" "$PROJECT_ROOT/Classes/TRReviewViewController.m"
+          cp "$GITHUB_WORKSPACE/ci/tapereader-v1.0/TRLibraryViewController.m" "$PROJECT_ROOT/Classes/TRLibraryViewController.m"
+          sed -i 's/Version: 0.2.0/Version: 1.0.0/' "$PROJECT_ROOT/control"
+          python3 - "$PROJECT_ROOT" <<'PY'
+          import pathlib, sys
+          root = pathlib.Path(sys.argv[1])
+          for rel in ("Info.plist", "Resources/Info.plist"):
+              p = root / rel
+              text = p.read_text()
+              text = text.replace("<string>0.2.0</string>", "<string>1.0.0</string>", 1)
+              text = text.replace("<key>CFBundleVersion</key>\n\t<string>2</string>",
+                                  "<key>CFBundleVersion</key>\n\t<string>10</string>", 1)
+              p.write_text(text)
+          PY
+
       - name: Install Theos
         run: |
           git clone --recursive --depth=1 https://github.com/theos/theos.git "$HOME/theos"
@@ -135,15 +158,15 @@ jobs:
             "$HOME/theos/toolchain/linux/iphone/bin/ldid" -S "$BIN" || true
           fi
           file "$BIN" | tee "$OUT/binary-info.txt"
-          (cd "$OUT" && zip -qry TapeReader-0.2.0-ios6-armv7.ipa Payload)
+          (cd "$OUT" && zip -qry TapeReader-1.0.0-ios6-armv7.ipa Payload)
           DEB="$(find "$PROJECT_ROOT"/packages -type f -name '*.deb' | sort | tail -n1)"
           test -n "$DEB"
-          cp "$DEB" "$OUT/TapeReader-0.2.0-ios6-armv7.deb"
+          cp "$DEB" "$OUT/TapeReader-1.0.0-ios6-armv7.deb"
           cp /tmp/tapereader-build.log "$OUT/build.log"
           cp /tmp/tapereader-package.log "$OUT/package.log"
-          sha256sum "$OUT/TapeReader-0.2.0-ios6-armv7.ipa" "$OUT/TapeReader-0.2.0-ios6-armv7.deb" > "$OUT/SHA256SUMS.txt"
-          dpkg-deb -I "$OUT/TapeReader-0.2.0-ios6-armv7.deb" | tee "$OUT/deb-info.txt"
-          unzip -l "$OUT/TapeReader-0.2.0-ios6-armv7.ipa" | tee "$OUT/ipa-contents.txt"
+          sha256sum "$OUT/TapeReader-1.0.0-ios6-armv7.ipa" "$OUT/TapeReader-1.0.0-ios6-armv7.deb" > "$OUT/SHA256SUMS.txt"
+          dpkg-deb -I "$OUT/TapeReader-1.0.0-ios6-armv7.deb" | tee "$OUT/deb-info.txt"
+          unzip -l "$OUT/TapeReader-1.0.0-ios6-armv7.ipa" | tee "$OUT/ipa-contents.txt"
 
       - name: Upload build outputs
         uses: actions/upload-artifact@v4
