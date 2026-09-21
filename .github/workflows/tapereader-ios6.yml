@@ -44,7 +44,7 @@ jobs:
           curl -fL --retry 4 --retry-delay 2             -o /tmp/linux-ios-toolchain.tar.lzma             https://github.com/sbingner/llvm-project/releases/download/v10.0.0-1/linux-ios-arm64e-clang-toolchain.tar.lzma
           mkdir -p /tmp/linux-ios-toolchain
           tar --lzma -xf /tmp/linux-ios-toolchain.tar.lzma -C /tmp/linux-ios-toolchain
-          TOOLCHAIN_ROOT="$(dirname "$(dirname "$(find /tmp/linux-ios-toolchain -type f -path '*/bin/clang' | head -n1)")")"
+          TOOLCHAIN_ROOT="$(dirname "$(dirname "$(find /tmp/linux-ios-toolchain \( -type f -o -type l \) -path '*/bin/clang' | head -n1)")")"
           test -n "$TOOLCHAIN_ROOT"
           mkdir -p "$HOME/theos/toolchain/linux/iphone"
           cp -a "$TOOLCHAIN_ROOT"/. "$HOME/theos/toolchain/linux/iphone/"
