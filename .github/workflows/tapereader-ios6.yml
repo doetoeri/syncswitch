@@ -166,6 +166,33 @@ jobs:
               p.write_text(text)
           PY
 
+      - name: Apply TapeReader 1.5 review picker and native icon
+        shell: bash
+        run: |
+          set -euxo pipefail
+          cp "$GITHUB_WORKSPACE/ci/tapereader-v1.5/TRReaderViewController.m" "$PROJECT_ROOT/Classes/TRReaderViewController.m"
+          python3 "$GITHUB_WORKSPACE/ci/tapereader-v1.5/generate_native_icon.py" "$PROJECT_ROOT/Resources"
+          sed -i 's/Version: 1.4.0/Version: 1.5.0/' "$PROJECT_ROOT/control"
+          python3 - "$PROJECT_ROOT" <<'PY'
+          import pathlib, plistlib, sys
+          root = pathlib.Path(sys.argv[1])
+          for rel in ("Info.plist", "Resources/Info.plist"):
+              p = root / rel
+              data = plistlib.loads(p.read_bytes())
+              data["CFBundleShortVersionString"] = "1.5.0"
+              data["CFBundleVersion"] = "15"
+              # Let iOS 6 apply its native SpringBoard gloss/masking.
+              data["UIPrerenderedIcon"] = False
+              # Keep compatibility with the legacy iPad icon naming used by the project.
+              files = list(data.get("CFBundleIconFiles", []))
+              for name in ("Icon.png","Icon@2x.png","Icon-72.png","Icon-72@2x.png","Icon-Small-50.png","Icon-Small-50@2x.png"):
+                  if name not in files:
+                      files.append(name)
+              data["CFBundleIconFiles"] = files
+              p.write_bytes(plistlib.dumps(data, fmt=plistlib.FMT_XML, sort_keys=False))
+          PY
+          ls -lh "$PROJECT_ROOT"/Resources/Icon*.png
+
       - name: Install Theos
         run: |
           git clone --recursive --depth=1 https://github.com/theos/theos.git "$HOME/theos"
@@ -234,15 +261,15 @@ jobs:
             "$HOME/theos/toolchain/linux/iphone/bin/ldid" -S "$BIN" || true
           fi
           file "$BIN" | tee "$OUT/binary-info.txt"
-          (cd "$OUT" && zip -qry TapeReader-1.4.0-ios6-armv7.ipa Payload)
+          (cd "$OUT" && zip -qry TapeReader-1.5.0-ios6-armv7.ipa Payload)
           DEB="$(find "$PROJECT_ROOT"/packages -type f -name '*.deb' | sort | tail -n1)"
           test -n "$DEB"
-          cp "$DEB" "$OUT/TapeReader-1.4.0-ios6-armv7.deb"
+          cp "$DEB" "$OUT/TapeReader-1.5.0-ios6-armv7.deb"
           cp /tmp/tapereader-build.log "$OUT/build.log"
           cp /tmp/tapereader-package.log "$OUT/package.log"
-          sha256sum "$OUT/TapeReader-1.4.0-ios6-armv7.ipa" "$OUT/TapeReader-1.4.0-ios6-armv7.deb" > "$OUT/SHA256SUMS.txt"
-          dpkg-deb -I "$OUT/TapeReader-1.4.0-ios6-armv7.deb" | tee "$OUT/deb-info.txt"
-          unzip -l "$OUT/TapeReader-1.4.0-ios6-armv7.ipa" | tee "$OUT/ipa-contents.txt"
+          sha256sum "$OUT/TapeReader-1.5.0-ios6-armv7.ipa" "$OUT/TapeReader-1.5.0-ios6-armv7.deb" > "$OUT/SHA256SUMS.txt"
+          dpkg-deb -I "$OUT/TapeReader-1.5.0-ios6-armv7.deb" | tee "$OUT/deb-info.txt"
+          unzip -l "$OUT/TapeReader-1.5.0-ios6-armv7.ipa" | tee "$OUT/ipa-contents.txt"
 
       - name: Upload build outputs
         uses: actions/upload-artifact@v4
