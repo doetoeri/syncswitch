@@ -193,6 +193,52 @@ jobs:
           PY
           ls -lh "$PROJECT_ROOT"/Resources/Icon*.png
 
+      - name: Apply TapeReader 1.6 ordered review, export and backup update
+        shell: bash
+        run: |
+          set -euxo pipefail
+          cp "$GITHUB_WORKSPACE/ci/tapereader-v1.6/TRReaderViewController.m" "$PROJECT_ROOT/Classes/TRReaderViewController.m"
+          cp "$GITHUB_WORKSPACE/ci/tapereader-v1.6/TRTapeView.h" "$PROJECT_ROOT/Classes/TRTapeView.h"
+          cp "$GITHUB_WORKSPACE/ci/tapereader-v1.6/TRTapeView.m" "$PROJECT_ROOT/Classes/TRTapeView.m"
+          cp "$GITHUB_WORKSPACE/ci/tapereader-v1.6/TRDocumentStore.h" "$PROJECT_ROOT/Classes/TRDocumentStore.h"
+          cp "$GITHUB_WORKSPACE/ci/tapereader-v1.6/TRDocumentStore.m" "$PROJECT_ROOT/Classes/TRDocumentStore.m"
+          cp "$GITHUB_WORKSPACE/ci/tapereader-v1.6/TRLibraryViewController.m" "$PROJECT_ROOT/Classes/TRLibraryViewController.m"
+          sed -i 's/Version: 1.5.0/Version: 1.6.0/' "$PROJECT_ROOT/control"
+          python3 - "$PROJECT_ROOT" <<'PY'
+          import pathlib, plistlib, sys
+          root = pathlib.Path(sys.argv[1])
+          backup_uti = "app.tapereader.legacy.backup"
+          for rel in ("Info.plist", "Resources/Info.plist"):
+              p = root / rel
+              data = plistlib.loads(p.read_bytes())
+              data["CFBundleShortVersionString"] = "1.6.0"
+              data["CFBundleVersion"] = "16"
+
+              docs = list(data.get("CFBundleDocumentTypes", []))
+              if not any(backup_uti in d.get("LSItemContentTypes", []) for d in docs):
+                  docs.append({
+                      "CFBundleTypeName": "TapeReader Backup",
+                      "CFBundleTypeRole": "Editor",
+                      "LSHandlerRank": "Owner",
+                      "LSItemContentTypes": [backup_uti],
+                  })
+              data["CFBundleDocumentTypes"] = docs
+
+              decls = list(data.get("UTExportedTypeDeclarations", []))
+              if not any(d.get("UTTypeIdentifier") == backup_uti for d in decls):
+                  decls.append({
+                      "UTTypeIdentifier": backup_uti,
+                      "UTTypeDescription": "TapeReader Backup",
+                      "UTTypeConformsTo": ["public.data"],
+                      "UTTypeTagSpecification": {
+                          "public.filename-extension": ["tapereaderbackup"],
+                          "public.mime-type": "application/x-tapereader-backup",
+                      },
+                  })
+              data["UTExportedTypeDeclarations"] = decls
+              p.write_bytes(plistlib.dumps(data, fmt=plistlib.FMT_XML, sort_keys=False))
+          PY
+
       - name: Install Theos
         run: |
           git clone --recursive --depth=1 https://github.com/theos/theos.git "$HOME/theos"
@@ -261,15 +307,15 @@ jobs:
             "$HOME/theos/toolchain/linux/iphone/bin/ldid" -S "$BIN" || true
           fi
           file "$BIN" | tee "$OUT/binary-info.txt"
-          (cd "$OUT" && zip -qry TapeReader-1.5.0-ios6-armv7.ipa Payload)
+          (cd "$OUT" && zip -qry TapeReader-1.6.0-ios6-armv7.ipa Payload)
           DEB="$(find "$PROJECT_ROOT"/packages -type f -name '*.deb' | sort | tail -n1)"
           test -n "$DEB"
-          cp "$DEB" "$OUT/TapeReader-1.5.0-ios6-armv7.deb"
+          cp "$DEB" "$OUT/TapeReader-1.6.0-ios6-armv7.deb"
           cp /tmp/tapereader-build.log "$OUT/build.log"
           cp /tmp/tapereader-package.log "$OUT/package.log"
-          sha256sum "$OUT/TapeReader-1.5.0-ios6-armv7.ipa" "$OUT/TapeReader-1.5.0-ios6-armv7.deb" > "$OUT/SHA256SUMS.txt"
-          dpkg-deb -I "$OUT/TapeReader-1.5.0-ios6-armv7.deb" | tee "$OUT/deb-info.txt"
-          unzip -l "$OUT/TapeReader-1.5.0-ios6-armv7.ipa" | tee "$OUT/ipa-contents.txt"
+          sha256sum "$OUT/TapeReader-1.6.0-ios6-armv7.ipa" "$OUT/TapeReader-1.6.0-ios6-armv7.deb" > "$OUT/SHA256SUMS.txt"
+          dpkg-deb -I "$OUT/TapeReader-1.6.0-ios6-armv7.deb" | tee "$OUT/deb-info.txt"
+          unzip -l "$OUT/TapeReader-1.6.0-ios6-armv7.ipa" | tee "$OUT/ipa-contents.txt"
 
       - name: Upload build outputs
         uses: actions/upload-artifact@v4
