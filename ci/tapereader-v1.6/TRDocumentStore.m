@@ -2,6 +2,7 @@
 #import "TRTape.h"
 #import <CoreGraphics/CoreGraphics.h>
 #import <UIKit/UIKit.h>
+#import <stdlib.h>
 
 @interface TRDocumentStore ()
 @property(nonatomic, readwrite, copy) NSString *rootPath;
@@ -317,7 +318,7 @@ static TRDocumentStore *TRSharedStore = nil;
     CGPDFDocumentRelease(pdf);
 
     NSDictionary *attrs = [[NSFileManager defaultManager] attributesOfItemAtPath:path error:error];
-    if (!attrs || [attrs fileSize] == 0) {
+    if (!attrs || [[attrs objectForKey:NSFileSize] unsignedLongLongValue] == 0) {
         [[NSFileManager defaultManager] removeItemAtPath:path error:NULL];
         if (error && !*error) *error = [NSError errorWithDomain:@"TapeReader" code:41 userInfo:@{NSLocalizedDescriptionKey:@"PDF 내보내기에 실패했습니다."}];
         return nil;
